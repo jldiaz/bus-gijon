@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>BUS Gijón</title>
+    <link rel="icon" href="data:image/svg+xml,%3C%3Fxml%20version%3D%221.0%22%20encoding%3D%22utf-8%22%3F%3E%3C!--%20License%3A%20Apache.%20Made%20by%20Iconscout%3A%20https%3A%2F%2Fgithub.com%2FIconscout%2Funicons%20--%3E%3Csvg%20fill%3D%22%23000000%22%20width%3D%22800px%22%20height%3D%22800px%22%20viewBox%3D%220%200%2024%2024%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M8.5%2C17a1%2C1%2C0%2C0%2C0%2C1-1%2C1.36%2C1.36%2C0%2C0%2C0%2C0-.2.64.64%2C0%2C0%2C0-.06-.18.76.76%2C0%2C0%2C0-.09-.18l-.12-.15a1%2C1%2C0%2C0%2C0-.33-.21A1%2C1%2C0%2C0%2C0%2C8.3%2C15l-.18.06-.18.09a1.58%2C1.58%2C0%2C0%2C0-.15.12l-.12.15a.76.76%2C0%2C0%2C0-.09.18.64.64%2C0%2C0%2C0-.06.18%2C1.36%2C1.36%2C0%2C0%2C0%2C0%2C.2%2C1%2C1%2C0%2C0%2C0%2C1%2C1Zm8%2C0a1%2C1%2C0%2C0%2C0%2C1-1%2C1.36%2C1.36%2C0%2C0%2C0%2C0-.2.64.64%2C0%2C0%2C0-.06-.18.76.76%2C0%2C0%2C0-.09-.18l-.12-.15a1.15%2C1.15%2C0%2C0%2C0-.33-.21%2C1%2C1%2C0%2C0%2C0-.76%2C0%2C1.15%2C1.15%2C0%2C0%2C0-.33.21l-.12.15a.76.76%2C0%2C0%2C0-.09.18.64.64%2C0%2C0%2C0-.06.18%2C1.36%2C1.36%2C0%2C0%2C0%2C0%2C.2%2C1%2C1%2C0%2C0%2C0%2C.29.7A1%2C1%2C0%2C0%2C0%2C16.5%2C17Zm-3-12h-2a1%2C1%2C0%2C0%2C0%2C0%2C2h2a1%2C1%2C0%2C0%2C0%2C0-2Zm5-3H6.5a3%2C3%2C0%2C0%2C0-3%2C3V17a3%2C3%2C0%2C0%2C0%2C2%2C2.82V21a1%2C1%2C0%2C0%2C0%2C2%2C0V20h10v1a1%2C1%2C0%2C0%2C0%2C2%2C0V19.82a3%2C3%2C0%2C0%2C0%2C2-2.82V5A3%2C3%2C0%2C0%2C0%2C18.5%2C2Zm1%2C15a1%2C1%2C0%2C0%2C1-1%2C1H6.5a1%2C1%2C0%2C0%2C1-1-1V14h14Zm0-5H5.5V5a1%2C1%2C0%2C0%2C1%2C1-1h12a1%2C1%2C0%2C0%2C1%2C1%2C1Z%22%2F%3E%3C%2Fsvg%3E">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .container {
+            max-width: 800px;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+        .parada-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 15px 15px 0 0;
+        }
+        .llegada-item {
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            transition: all 0.3s;
+        }
+        .llegada-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .linea-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            min-width: 50px;
+            text-align: center;
+        }
+        .search-box {
+            position: relative;
+        }
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .suggestion-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .suggestion-item:hover {
+            background: #f8f9fa;
+        }
+        #searchBtn .spinner {
+            display: none;
+        }
+        #searchBtn.loading .spinner {
+            display: inline-block;
+        }
+        #searchBtn.loading .bi-search {
+            display: none;
+        }
+        .no-llegadas {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+        }
+        .minutos {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .dropdown-menu {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .favorito-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .favorito-item:hover {
+            background: #f8f9fa;
+        }
+        .favorito-nombre {
+            flex-grow: 1;
+            cursor: pointer;
+        }
+        .remove-fav {
+            cursor: pointer;
+            color: #dc3545;
+            margin-left: 10px;
+            transition: transform 0.2s;
+        }
+        .remove-fav:hover {
+            transform: scale(1.2);
+        }
+        .spinner {
+            display: none;
+        }
+        .spinner.active {
+            display: inline-block;
+        }
+        .btn-favorito {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-favorito:hover {
+            transform: scale(1.2);
+        }
+        .btn-favorito.active {
+            color: #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="text-center mb-3">
+            <h1 class="text-white mb-0"><i class="bi bi-bus-front"></i> BUS Gijón</h1>
+        </div>
+
+        <!-- Favoritos como dropdown -->
+        <div id="favoritosCard" class="card mb-3">
+            <div class="card-body p-2">
+                <div class="dropdown">
+                    <button class="btn btn-link text-decoration-none w-100 text-start p-2 d-flex justify-content-between align-items-center" 
+                            type="button" 
+                            id="dropdownFavoritos" 
+                            data-bs-toggle="dropdown" 
+                            aria-expanded="false">
+                        <span><i class="bi bi-star-fill text-warning"></i> Favoritas <span id="numFavoritos" class="badge bg-primary"></span></span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <ul class="dropdown-menu w-100" id="favoritosContainer" aria-labelledby="dropdownFavoritos">
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body p-2">
+                <div class="search-box">
+                    <div class="input-group">
+                        <input type="text" 
+                               id="searchInput" 
+                               class="form-control" 
+                               placeholder="Buscar parada (nombre o número)..."
+                               autocomplete="off">
+                        <button class="btn btn-primary" id="searchBtn">
+                            <span class="spinner spinner-border spinner-border-sm" role="status"></span>
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                    <div id="suggestions" class="suggestions" style="display: none;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingCard" class="card" style="display: none;">
+            <div class="card-body text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="text-muted">Conectando con EMTUSA...</p>
+            </div>
+        </div>
+        <div id="emptyCard" class="card">
+            <div class="card-body text-center py-5">
+                <i class="bi bi-search text-secondary" style="font-size:2.5rem;"></i>
+                <p class="mt-3 text-muted">Busca una parada o elige una favorita</p>
+            </div>
+        </div>
+
+        <div id="paradaInfo" class="card" style="display: none;">
+            <div class="parada-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h5 class="mb-0" id="paradaNombre">
+                            <i class="bi bi-geo-alt-fill"></i> <span id="paradaDescripcion"></span>
+                        </h5>
+                        <small id="paradaId" class="opacity-75"></small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button id="favoritoBtn" class="btn-favorito" title="Añadir/Quitar de favoritos">
+                            <i class="bi bi-star"></i>
+                        </button>
+                        <button id="refreshBtn" class="btn btn-light btn-sm" title="Actualizar">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                </div>
+                <small class="d-block mt-2 opacity-75">
+                    <i class="bi bi-clock-history"></i> Actualizado hace <span id="tiempoActualizacion">0s</span>
+                </small>
+            </div>
+            <div class="card-body">
+                <div id="llegadasContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let token = null;
+        let todasParadas = [];
+        let paradaActualId = null;
+        let paradaActualDescripcion = null;
+        let tiempoUltimaActualizacion = null;
+        let intervaloTemporizador = null;
+        const API_BASE = 'https://emtusasiri.pub.gijon.es/emtusasiri';
+        const PARADA_DEFAULT = 715;
+        const FAVORITOS_KEY = 'emtusa_favoritos';
+
+        // Normalizar texto (eliminar acentos y convertir a minúsculas)
+        function normalizarTexto(texto) {
+            return texto.toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        }
+
+        // Gestión de favoritos
+        function cargarFavoritos() {
+            const favs = localStorage.getItem(FAVORITOS_KEY);
+            return favs ? JSON.parse(favs) : [];
+        }
+
+        function guardarFavoritos(favoritos) {
+            localStorage.setItem(FAVORITOS_KEY, JSON.stringify(favoritos));
+        }
+
+        function esFavorito(idParada) {
+            const favoritos = cargarFavoritos();
+            return favoritos.some(f => f.id === idParada);
+        }
+
+        function agregarFavorito(idParada, descripcion) {
+            const favoritos = cargarFavoritos();
+            if (!esFavorito(idParada)) {
+                favoritos.push({ id: idParada, descripcion: descripcion });
+                guardarFavoritos(favoritos);
+                actualizarUIFavoritos();
+                
+                // Si es la parada actual, actualizar el botón de estrella
+                if (paradaActualId && paradaActualId.toString() === idParada.toString()) {
+                    actualizarBotonFavorito();
+                }
+            }
+        }
+
+        function quitarFavorito(idParada) {
+            let favoritos = cargarFavoritos();
+            // Convertir a string para comparación consistente
+            favoritos = favoritos.filter(f => f.id.toString() !== idParada.toString());
+            guardarFavoritos(favoritos);
+            actualizarUIFavoritos();
+            
+            // Si es la parada actual, actualizar el botón de estrella
+            if (paradaActualId && paradaActualId.toString() === idParada.toString()) {
+                actualizarBotonFavorito();
+            }
+        }
+
+        function actualizarUIFavoritos() {
+            const favoritos = cargarFavoritos();
+            const container = document.getElementById('favoritosContainer');
+            const card = document.getElementById('favoritosCard');
+            const numFavoritos = document.getElementById('numFavoritos');
+            
+            // Siempre mostrar el card
+            card.style.display = 'block';
+            numFavoritos.textContent = favoritos.length;
+            
+            let html = '';
+            if (favoritos.length === 0) {
+                // Mensaje cuando no hay favoritos
+                html = '<li class="dropdown-item text-muted text-center py-2"><small>No hay paradas favoritas.<br/> Añádelas pulsando la estrella en la parada</small></li>';
+            } else {
+                favoritos.forEach(fav => {
+                    html += `
+                        <li class="favorito-item dropdown-item">
+                            <span class="favorito-nombre" data-id="${fav.id}">${fav.descripcion}</span>
+                            <i class="bi bi-x-circle remove-fav" data-id="${fav.id}"></i>
+                        </li>
+                    `;
+                });
+            }
+            container.innerHTML = html;
+            
+            // Event listeners para los favoritos
+            container.querySelectorAll('.favorito-nombre').forEach(elem => {
+                elem.addEventListener('click', () => {
+                    cargarParada(elem.dataset.id);
+                    // Cerrar el dropdown después de seleccionar
+                    const dropdown = bootstrap.Dropdown.getInstance(document.getElementById('dropdownFavoritos'));
+                    if (dropdown) dropdown.hide();
+                });
+            });
+            
+            container.querySelectorAll('.remove-fav').forEach(elem => {
+                elem.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const idParada = elem.dataset.id;
+                    console.log('Quitando favorito:', idParada);
+                    quitarFavorito(idParada);
+                });
+            });
+            
+            // Actualizar botón de estrella si es la parada actual
+            actualizarBotonFavorito();
+        }
+
+        function actualizarBotonFavorito() {
+            if (!paradaActualId) return;
+            
+            const btn = document.getElementById('favoritoBtn');
+            const icon = btn.querySelector('i');
+            
+            if (esFavorito(paradaActualId)) {
+                icon.className = 'bi bi-star-fill';
+                btn.classList.add('active');
+            } else {
+                icon.className = 'bi bi-star';
+                btn.classList.remove('active');
+            }
+        }
+
+        // Login para obtener el token
+        async function login() {
+            const url = `${API_BASE}/login?grant_type=password&username=info%40vitesia.com&password=vitesia130`;
+            const headers = {
+                'Authorization': 'Basic YXBpOmFwaQ=='
+            };
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    return data.access_token;
+                }
+                throw new Error('Error en login');
+            } catch (error) {
+                console.error('Error en login:', error);
+                return null;
+            }
+        }
+
+        // Obtener todas las paradas
+        async function getParadas() {
+            const url = `${API_BASE}/paradas/todasParadas`;
+            const headers = {
+                'Authorization': `Bearer ${token}`
+            };
+
+            try {
+                const response = await fetch(url, { headers });
+                if (response.ok) {
+                    return await response.json();
+                }
+                throw new Error('Error al obtener paradas');
+            } catch (error) {
+                console.error('Error al obtener paradas:', error);
+                return [];
+            }
+        }
+
+        // Obtener información de una parada específica
+        async function getParada(idParada) {
+            const url = `${API_BASE}/paradas/parada/${idParada}`;
+            const headers = {
+                'Authorization': `Bearer ${token}`
+            };
+
+            try {
+                const response = await fetch(url, { headers });
+                if (response.ok) {
+                    return await response.json();
+                }
+                throw new Error('Error al obtener parada');
+            } catch (error) {
+                console.error('Error al obtener parada:', error);
+                return null;
+            }
+        }
+
+        // Buscar paradas por nombre o ID
+        function buscarParadas(texto) {
+            if (!texto || texto.length < 1) return [];
+
+            const textoNormalizado = normalizarTexto(texto);
+            const resultados = [];
+
+            // Si el texto es numérico, buscar por ID
+            if (/^\d+$/.test(texto)) {
+                const idBuscado = texto;
+                todasParadas.forEach(parada => {
+                    if (parada.idparada.toString() === idBuscado) {
+                        resultados.push({ ...parada, score: 100 });
+                    } else if (parada.idparada.toString().includes(idBuscado)) {
+                        resultados.push({ ...parada, score: 90 });
+                    }
+                });
+            }
+
+            // Búsqueda por nombre (siempre se hace, además de por ID)
+            if (texto.length >= 2) {
+                todasParadas.forEach(parada => {
+                    const descripcionNorm = normalizarTexto(parada.descripcion);
+                    
+                    // Evitar duplicados si ya se encontró por ID
+                    if (resultados.some(r => r.idparada === parada.idparada)) {
+                        return;
+                    }
+                    
+                    // Búsqueda por substring
+                    if (descripcionNorm.includes(textoNormalizado)) {
+                        let score;
+                        if (descripcionNorm === textoNormalizado) {
+                            score = 100;
+                        } else {
+                            score = Math.floor((textoNormalizado.length / descripcionNorm.length) * 100);
+                        }
+                        resultados.push({ ...parada, score });
+                    }
+                    // Búsqueda por palabras
+                    else {
+                        const palabras = textoNormalizado.split(' ');
+                        if (palabras.length > 1 && palabras.every(p => descripcionNorm.includes(p))) {
+                            resultados.push({ ...parada, score: 75 });
+                        }
+                    }
+                });
+            }
+
+            // Ordenar por score y tomar las 5 mejores
+            return resultados.sort((a, b) => b.score - a.score).slice(0, 5);
+        }
+
+        // Formatear tiempo transcurrido
+        function formatearTiempo(segundos) {
+            if (segundos < 60) {
+                return `${segundos}s`;
+            } else if (segundos < 3600) {
+                const minutos = Math.floor(segundos / 60);
+                const segs = segundos % 60;
+                return `${minutos}m ${segs}s`;
+            } else {
+                const horas = Math.floor(segundos / 3600);
+                const minutos = Math.floor((segundos % 3600) / 60);
+                return `${horas}h ${minutos}m`;
+            }
+        }
+
+        // Actualizar el temporizador de consulta
+        function actualizarTemporizador() {
+            if (!tiempoUltimaActualizacion) return;
+
+            const ahora = Date.now();
+            const diferencia = Math.floor((ahora - tiempoUltimaActualizacion) / 1000);
+            document.getElementById('tiempoActualizacion').textContent = formatearTiempo(diferencia);
+        }
+
+        // Actualizar los temporizadores de GPS de cada autobús
+        function actualizarTemporizadoresGPS() {
+            const elementos = document.querySelectorAll('.gps-time');
+            const ahora = new Date();
+
+            elementos.forEach(elem => {
+                const timestamp = parseInt(elem.dataset.timestamp);
+                if (timestamp) {
+                    const diferencia = Math.floor((ahora.getTime() - timestamp) / 1000);
+                    elem.textContent = `hace ${formatearTiempo(diferencia)}`;
+                }
+            });
+        }
+
+        // Iniciar los temporizadores
+        function iniciarTemporizador() {
+            // Limpiar intervalo anterior si existe
+            if (intervaloTemporizador) {
+                clearInterval(intervaloTemporizador);
+            }
+
+            tiempoUltimaActualizacion = Date.now();
+            actualizarTemporizador();
+
+            // Actualizar cada segundo ambos temporizadores
+            intervaloTemporizador = setInterval(() => {
+                actualizarTemporizador();
+                actualizarTemporizadoresGPS();
+            }, 1000);
+        }
+
+        // Mostrar información de la parada
+        function mostrarParada(data) {
+            const descripcion = data.descripcion || 'Desconocida';
+            const idParada = data.idparada || '?';
+            const llegadas = data.llegadas || [];
+
+            document.getElementById('paradaDescripcion').textContent = descripcion;
+            document.getElementById('paradaId').textContent = `ID: ${idParada}`;
+            
+            // Guardar ID y descripción de la parada actual
+            paradaActualId = idParada;
+            paradaActualDescripcion = descripcion;
+            
+            // Actualizar botón de favorito
+            actualizarBotonFavorito();
+            
+            // Iniciar temporizador
+            iniciarTemporizador();
+
+            const container = document.getElementById('llegadasContainer');
+
+            if (llegadas.length === 0) {
+                container.innerHTML = `
+                    <div class="no-llegadas">
+                        <i class="bi bi-exclamation-circle" style="font-size: 3rem; color: #ffc107;"></i>
+                        <p class="mt-3">No hay llegadas previstas para esta parada en este momento</p>
+                    </div>
+                `;
+            } else {
+                let html = `<h5 class="mb-3">Próximas llegadas (${llegadas.length}):</h5>`;
+                
+                llegadas.forEach(llegada => {
+                    const linea = llegada.linea || {};
+                    const trayecto = llegada.trayecto || {};
+                    const codigoLinea = linea.codigo || '?';
+                    const destino = trayecto.destino || 'Desconocido';
+                    const minutos = llegada.minutos || '?';
+                    const distancia = llegada.distancia || 0;
+                    const distanciaKm = (distancia / 1000).toFixed(1);
+                    const horaActualizacion = llegada.horaActualizacion || '';
+                    const fechaActualizacion = llegada.fechaActualizacion || '';
+
+                    // Calcular timestamp de la actualización GPS
+                    let timestampGPS = '';
+                    let textoGPS = '';
+                    if (horaActualizacion && fechaActualizacion) {
+                        try {
+                            const dt = new Date(`${fechaActualizacion}T${horaActualizacion}`);
+                            timestampGPS = dt.getTime();
+                            const diferencia = Math.floor((Date.now() - timestampGPS) / 1000);
+                            textoGPS = `hace ${formatearTiempo(diferencia)}`;
+                        } catch (e) {
+                            textoGPS = horaActualizacion;
+                        }
+                    }
+
+                    html += `
+                        <div class="llegada-item">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div>
+                                    <span class="linea-badge">Línea ${codigoLinea}</span>
+                                    <i class="bi bi-arrow-right mx-2"></i>
+                                    <strong>${destino}</strong>
+                                </div>
+                                <div class="minutos">
+                                    <i class="bi bi-clock"></i> ${minutos} min
+                                </div>
+                            </div>
+                            <div class="text-muted small">
+                                ${distancia > 0 ? `<i class="bi bi-geo-alt"></i> ${distanciaKm} km` : ''}
+                                ${distancia > 0 && textoGPS ? ' • ' : ''}
+                                ${textoGPS ? `<i class="bi bi-broadcast"></i> GPS: <span class="gps-time" data-timestamp="${timestampGPS}">${textoGPS}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                container.innerHTML = html;
+            }
+
+            document.getElementById('loadingCard').style.display = 'none';
+            document.getElementById('emptyCard').style.display = 'none';
+            document.getElementById('paradaInfo').style.display = 'block';
+        }
+
+        // Mostrar sugerencias
+        function mostrarSugerencias(paradas) {
+            const container = document.getElementById('suggestions');
+            
+            if (paradas.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            let html = '';
+            paradas.forEach(parada => {
+                html += `
+                    <div class="suggestion-item" data-id="${parada.idparada}">
+                        ${parada.descripcion} <small class="text-muted">(ID: ${parada.idparada})</small>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            container.style.display = 'block';
+
+            // Añadir event listeners
+            container.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', async () => {
+                    const idParada = item.dataset.id;
+                    const descripcion = item.textContent.split('(')[0].trim();
+                    document.getElementById('searchInput').value = descripcion;
+                    container.style.display = 'none';
+                    await cargarParada(idParada);
+                });
+            });
+        }
+
+        // Cargar información de una parada
+        async function cargarParada(idParada) {
+            document.getElementById('loadingCard').style.display = 'block';
+            document.getElementById('emptyCard').style.display = 'none';
+            document.getElementById('paradaInfo').style.display = 'none';
+
+            const data = await getParada(idParada);
+            if (data) {
+                mostrarParada(data);
+            } else {
+                alert('Error al cargar la información de la parada');
+                document.getElementById('loadingCard').style.display = 'none';
+            }
+        }
+
+        // Inicialización
+        async function init() {
+            // Obtener token
+            token = await login();
+            if (!token) {
+                alert('Error al conectar con EMTUSA');
+                return;
+            }
+
+            // Cargar todas las paradas
+            todasParadas = await getParadas();
+            console.log(`${todasParadas.length} paradas cargadas`);
+
+            // Mostrar favoritos
+            actualizarUIFavoritos();
+            // Mostrar mensaje inicial
+            document.getElementById('loadingCard').style.display = 'none';
+            document.getElementById('paradaInfo').style.display = 'none';
+            document.getElementById('emptyCard').style.display = 'block';
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const texto = e.target.value;
+            const resultados = buscarParadas(texto);
+            mostrarSugerencias(resultados);
+        });
+
+        document.getElementById('searchBtn').addEventListener('click', async () => {
+            const texto = document.getElementById('searchInput').value;
+            const resultados = buscarParadas(texto);
+            
+            if (resultados.length === 1) {
+                await cargarParada(resultados[0].idparada);
+                document.getElementById('suggestions').style.display = 'none';
+            } else if (resultados.length > 1) {
+                mostrarSugerencias(resultados);
+            } else {
+                alert('No se encontraron paradas con ese nombre');
+            }
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('searchBtn').click();
+            }
+        });
+
+        // Cerrar sugerencias al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-box')) {
+                document.getElementById('suggestions').style.display = 'none';
+            }
+        });
+
+        // Event listener para el botón de actualizar
+        document.getElementById('refreshBtn').addEventListener('click', async () => {
+            if (paradaActualId) {
+                const btn = document.getElementById('refreshBtn');
+                const icon = btn.querySelector('i');
+                
+                // Animar el botón
+                icon.style.animation = 'spin 0.5s linear';
+                btn.disabled = true;
+                
+                await cargarParada(paradaActualId);
+                
+                // Restaurar botón
+                setTimeout(() => {
+                    icon.style.animation = '';
+                    btn.disabled = false;
+                }, 500);
+            }
+        });
+
+        // Event listener para el botón de favorito
+        document.getElementById('favoritoBtn').addEventListener('click', () => {
+            if (!paradaActualId || !paradaActualDescripcion) return;
+            
+            if (esFavorito(paradaActualId)) {
+                quitarFavorito(paradaActualId);
+            } else {
+                agregarFavorito(paradaActualId, paradaActualDescripcion);
+            }
+            actualizarBotonFavorito();
+        });
+
+        // Añadir animación de spin
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Iniciar la aplicación
+        init();
+
+        // Actualizar cada 30 segundos
+        setInterval(async () => {
+            if (paradaActualId && document.getElementById('paradaInfo').style.display !== 'none') {
+                const data = await getParada(paradaActualId);
+                if (data) {
+                    mostrarParada(data);
+                }
+            }
+        }, 30000);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
