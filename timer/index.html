@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="TimeFlow Pro" />
+  <title>TimeFlow Pro - Seguimiento de Tiempos</title>
+
+  <!-- Fuente Inter y JetBrains Mono para el reloj -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* Comportamiento de App Nativa Android */
+    * {
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    input, textarea, select {
+      user-select: text;
+    }
+    html, body {
+      overscroll-behavior-y: none;
+      height: 100%;
+    }
+    /* Ocultar scrollbars manteniendo funcionalidad */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .timer-glow {
+      animation: pulse-ring 2.5s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans flex flex-col h-full overflow-hidden">
+
+  <!-- ==========================================
+       CABECERA SUPERIOR (ESTILO ANDROID APP BAR)
+       ========================================== -->
+  <header class="shrink-0 bg-slate-900/95 backdrop-blur-md border-b border-slate-800/80 px-4 pt-3 pb-2.5 z-20">
+    <div class="max-w-lg mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-md shadow-indigo-500/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-extrabold tracking-tight text-white">TimeFlow Pro</h1>
+            <span id="wakelock-badge" class="hidden text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              Pantalla Activa
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400">
+            Hoy: <strong id="header-today-total" class="text-slate-200 font-mono">00h 00m</strong> · Sem: <strong id="header-week-total" class="text-slate-200 font-mono">00h 00m</strong>
+          </p>
+        </div>
+      </div>
+
+      <!-- Botón rápido de Backup / Ajustes -->
+      <div class="flex items-center gap-1.5">
+        <button onclick="openBackupModal()" class="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 active:scale-95 transition" title="Copia de seguridad y Exportación">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==========================================
+       ÁREA PRINCIPAL DESPLAZABLE (CONTENEDOR DE VISTAS)
+       ========================================== -->
+  <main id="main-scroll" class="flex-1 overflow-y-auto no-scrollbar pb-36">
+    <div class="max-w-lg mx-auto p-4 space-y-4">
+
+      <!-- VISTA 1: ÁRBOL DE CATEGORÍAS, SUBCATEGORÍAS Y TAREAS -->
+      <section id="view-hierarchy" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-white">Mis Tareas</h2>
+            <p class="text-xs text-slate-400">Toca una tarea para abrir su cronómetro</p>
+          </div>
+          <button onclick="openHierarchyModal('create', 'category')" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-indigo-600/25 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span>Categoría</span>
+          </button>
+        </div>
+
+        <!-- Contenedor dinámico del árbol -->
+        <div id="hierarchy-container" class="space-y-3"></div>
+      </section>
+
+      <!-- VISTA 2: PANTALLA DE TEMPORIZACIÓN DE TAREA -->
+      <section id="view-timer" class="hidden space-y-4">
+        <!-- Barra superior de retorno y migas de pan -->
+        <div class="flex items-center justify-between gap-2">
+          <button onclick="switchTab('hierarchy')" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 text-xs font-semibold active:scale-95 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            <span>Volver al árbol</span>
+          </button>
+
+          <button onclick="openManualSessionModalForCurrentTask()" class="flex items-center gap-1 px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-indigo-400 text-xs font-semibold active:scale-95 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span>Ventana Manual</span>
+          </button>
+        </div>
+
+        <!-- Tarjeta Principal del Cronómetro -->
+        <div class="bg-slate-900 rounded-3xl border border-slate-800 p-5 shadow-xl relative overflow-hidden">
+          <!-- Etiqueta de Categoría y Subcategoría -->
+          <div id="timer-breadcrumbs" class="flex items-center justify-center gap-1.5 text-xs font-semibold mb-2"></div>
+
+          <!-- Nombre de la tarea -->
+          <h2 id="timer-task-title" class="text-xl sm:text-2xl font-extrabold text-center text-white tracking-tight px-2">
+            Nombre de Tarea
+          </h2>
+
+          <!-- Reloj Circular / Digital Grande -->
+          <div class="my-6 flex flex-col items-center justify-center">
+            <div class="relative flex flex-col items-center justify-center w-64 h-64 rounded-full bg-slate-950 border-4 border-slate-800 shadow-inner">
+              <!-- Halo animado cuando está corriendo -->
+              <div id="timer-active-ring" class="hidden absolute inset-0 rounded-full border-4 border-emerald-500/40 timer-glow pointer-events-none"></div>
+
+              <span id="timer-status-badge" class="text-[11px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 mb-2">
+                LISTA PARA INICIAR
+              </span>
+
+              <!-- 1. Duración de la ventana actual -->
+              <div id="timer-main-display" class="text-4xl font-mono font-extrabold text-white tracking-wider tabular-nums">
+                00:00:00
+              </div>
+
+              <span class="text-[11px] text-slate-400 mt-1">Ventana Actual</span>
+
+              <div id="timer-sub-info" class="text-[11px] text-slate-500 mt-2 font-mono">
+                Sin ventana activa
+              </div>
+            </div>
+          </div>
+
+          <!-- Nota rápida de la sesión actual -->
+          <div class="mb-5">
+            <input
+              id="timer-note-input"
+              type="text"
+               oninput="handleTimerNoteChange(this.value)"
+              placeholder="Nota para esta ventana de tiempo (opcional)..."
+              class="w-full px-4 py-3 rounded-2xl bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+            />
+          </div>
+
+          <!-- CONTROLES TÁCTILES GRANDES: INICIAR, PAUSAR/REANUDAR, TERMINAR -->
+          <div id="timer-controls-container" class="grid grid-cols-1 gap-3">
+            <!-- Se inyecta dinámicamente según estado -->
+          </div>
+        </div>
+
+        <!-- 3 TARJETAS DE MÉTRICAS REQUERIDAS (Ventana Actual, Total Hoy, Total Semana) -->
+        <div class="grid grid-cols-3 gap-2.5">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-400 block">Ventana Actual</span>
+            <div id="metric-current-window" class="text-base sm:text-lg font-mono font-bold text-white mt-1">00:00:00</div>
+            <span class="text-[10px] text-slate-400 block mt-0.5">Sesión en curso</span>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-400 block">Total Hoy</span>
+            <div id="metric-today-total" class="text-base sm:text-lg font-mono font-bold text-white mt-1">00:00:00</div>
+            <span id="metric-today-count" class="text-[10px] text-slate-400 block mt-0.5">0 ventanas hoy</span>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 text-center">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-amber-400 block">Total Semana</span>
+            <div id="metric-week-total" class="text-base sm:text-lg font-mono font-bold text-white mt-1">00:00:00</div>
+            <span id="metric-week-count" class="text-[10px] text-slate-400 block mt-0.5">Lun - Dom</span>
+          </div>
+        </div>
+
+        <!-- Lista de ventanas registradas en esta tarea -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Ventanas de esta tarea</h3>
+              <p class="text-[11px] text-slate-400">Cada inicio y fin suma una nueva ventana</p>
+            </div>
+            <span id="task-sessions-badge" class="text-xs font-mono font-semibold px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300">0</span>
+          </div>
+          <div id="task-sessions-list" class="divide-y divide-slate-800/70 max-h-72 overflow-y-auto"></div>
+        </div>
+      </section>
+
+      <!-- VISTA 3: HISTÓRICO GLOBAL DE SESIONES -->
+      <section id="view-history" class="hidden space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-bold text-white">Histórico de Sesiones</h2>
+            <p class="text-xs text-slate-400">Todas las ventanas de tiempo guardadas</p>
+          </div>
+          <button onclick="openManualSessionModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold shadow-lg shadow-indigo-600/25 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+            <span>Añadir Manual</span>
+          </button>
+        </div>
+
+        <!-- Filtros de Histórico -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-3">
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Categoría</label>
+              <select id="history-filter-cat" onchange="renderHistoryView()" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white">
+                <option value="ALL">Todas</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Fecha</label>
+              <input id="history-filter-date" type="date" onchange="renderHistoryView()" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white" />
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-1">
+            <span id="history-summary-label" class="text-xs text-slate-400">Mostrando todas las sesiones</span>
+            <button onclick="clearHistoryFilters()" class="text-xs text-indigo-400 font-semibold hover:underline">Limpiar filtros</button>
+          </div>
+        </div>
+
+        <!-- Lista de sesiones históricas -->
+        <div id="history-list-container" class="space-y-2.5"></div>
+      </section>
+
+      <!-- VISTA 4: ESTADÍSTICAS Y DASHBOARD -->
+      <section id="view-stats" class="hidden space-y-4">
+        <div>
+          <h2 class="text-lg font-bold text-white">Estadísticas y Analítica</h2>
+          <p class="text-xs text-slate-400">Resumen visual de tu tiempo registrado</p>
+        </div>
+
+        <!-- Resumen Global Tarjetas -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <span class="text-[11px] font-bold uppercase text-indigo-400">Total Hoy</span>
+            <div id="stats-today-big" class="text-2xl font-mono font-extrabold text-white mt-1">00:00:00</div>
+            <span class="text-[11px] text-slate-400">Todas las tareas</span>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+            <span class="text-[11px] font-bold uppercase text-emerald-400">Total Esta Semana</span>
+            <div id="stats-week-big" class="text-2xl font-mono font-extrabold text-white mt-1">00:00:00</div>
+            <span class="text-[11px] text-slate-400">Lunes a Domingo</span>
+          </div>
+        </div>
+
+        <!-- Gráfico de Barras: Tiempo por día de la semana (Lunes a Domingo) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-bold text-white">Tiempo por Día de la Semana</h3>
+              <p class="text-[11px] text-slate-400">Semana actual (Lunes a Domingo)</p>
+            </div>
+          </div>
+          <div id="stats-weekday-bars" class="grid grid-cols-7 gap-2 items-end h-44 pt-6 px-1 border-b border-slate-800"></div>
+          <div id="stats-weekday-labels" class="grid grid-cols-7 gap-2 text-center mt-2"></div>
+        </div>
+
+        <!-- Distribución por Categorías (Semana Actual) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div>
+            <h3 class="text-sm font-bold text-white">Distribución por Categoría (Semana)</h3>
+            <p class="text-[11px] text-slate-400">Porcentaje y tiempo acumulado por grupo</p>
+          </div>
+          <div id="stats-category-breakdown" class="space-y-3"></div>
+        </div>
+
+        <!-- Ranking de Tareas con más tiempo esta semana -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+          <div>
+            <h3 class="text-sm font-bold text-white">Top Tareas de la Semana</h3>
+            <p class="text-[11px] text-slate-400">Tareas con mayor dedicación</p>
+          </div>
+          <div id="stats-top-tasks" class="space-y-2.5"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==========================================
+       MINI-PLAYER FLOTANTE (CUANDO HAY TAREA ACTIVA Y ESTÁS EN OTRA PESTAÑA)
+       ========================================== -->
+  <div id="floating-mini-player" class="hidden fixed bottom-[68px] inset-x-0 z-30 px-3 pointer-events-none">
+    <div class="max-w-lg mx-auto bg-slate-900/95 backdrop-blur-md border border-indigo-500/40 rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 pointer-events-auto">
+      <div onclick="openActiveTimerTask()" class="flex items-center gap-3 min-w-0 flex-1 cursor-pointer">
+        <span id="mini-player-dot" class="w-3 h-3 rounded-full bg-emerald-400 animate-ping shrink-0"></span>
+        <div class="min-w-0">
+          <div id="mini-player-title" class="text-xs font-bold text-white truncate">Tarea en curso</div>
+          <div id="mini-player-status" class="text-[10px] text-indigo-300">Toca para abrir el cronómetro</div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <span id="mini-player-time" class="font-mono font-bold text-sm text-white bg-slate-950 px-2.5 py-1 rounded-xl border border-slate-800">
+          00:00:00
+        </span>
+        <button id="mini-player-toggle-btn" onclick="toggleActiveTimerFromMiniPlayer()" class="p-2 rounded-xl bg-amber-500 text-slate-950 font-bold active:scale-95 transition">
+          <!-- Icono dinámico Pause/Play -->
+        </button>
+        <button onclick="finishActiveTimerWindow()" class="p-2 rounded-xl bg-rose-600 text-white font-bold active:scale-95 transition" title="Terminar ventana">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       BARRA DE NAVEGACIÓN INFERIOR (ESTILO ANDROID NATIVO)
+       ========================================== -->
+  <nav class="fixed bottom-0 inset-x-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5">
+    <div class="max-w-lg mx-auto grid grid-cols-4 gap-1">
+      <button id="nav-btn-hierarchy" onclick="switchTab('hierarchy')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-indigo-400 font-semibold transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        <span class="text-[11px]">Tareas</span>
+      </button>
+
+      <button id="nav-btn-timer" onclick="switchTab('timer')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-400 font-medium transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="text-[11px]">Reloj</span>
+      </button>
+
+      <button id="nav-btn-history" onclick="switchTab('history')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-400 font-medium transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="text-[11px]">Histórico</span>
+      </button>
+
+      <button id="nav-btn-stats" onclick="switchTab('stats')" class="flex flex-col items-center justify-center py-1.5 rounded-xl text-slate-400 font-medium transition">
+        <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        <span class="text-[11px]">Dashboard</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ==========================================
+       TOAST NOTIFICATION
+       ========================================== -->
+  <div id="toast-box" class="hidden fixed top-16 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
+    <div id="toast-content" class="bg-slate-800/95 backdrop-blur border border-slate-700 text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-semibold flex items-center gap-2"></div>
+  </div>
+
+  <!-- ==========================================
+       MODAL MULTIUSO (JERARQUÍA, MANUAL, CONFIRMACIÓN, BACKUP)
+       ========================================== -->
+  <div id="app-modal-backdrop" class="hidden fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div id="app-modal-body" class="bg-slate-900 border-t sm:border border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <!-- Contenido inyectado dinámicamente -->
+    </div>
+  </div>
+
+  <!-- ==========================================
+       LÓGICA JAVASCRIPT 100% AUTÓNOMA (LOCALSTORAGE)
+       ========================================== -->
+  <script>
+    const STORAGE_KEY = 'TIMEFLOW_PRO_LOCAL_V1';
+
+    // Paleta de colores para categorías
+    const COLORS = {
+      indigo: { name: 'Índigo', hex: '#6366f1', bg: 'bg-indigo-600', soft: 'bg-indigo-500/15', text: 'text-indigo-400', border: 'border-indigo-500/30' },
+      emerald: { name: 'Esmeralda', hex: '#10b981', bg: 'bg-emerald-600', soft: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/30' },
+      amber: { name: 'Ámbar', hex: '#f59e0b', bg: 'bg-amber-500', soft: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/30' },
+      rose: { name: 'Coral', hex: '#f43f5e', bg: 'bg-rose-600', soft: 'bg-rose-500/15', text: 'text-rose-400', border: 'border-rose-500/30' },
+      sky: { name: 'Cielo', hex: '#0ea5e9', bg: 'bg-sky-500', soft: 'bg-sky-500/15', text: 'text-sky-400', border: 'border-sky-500/30' },
+      purple: { name: 'Violeta', hex: '#a855f7', bg: 'bg-purple-600', soft: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/30' }
+    };
+
+    const ICONS = {
+      briefcase: '💼',
+      home: '🏠',
+      smile: '🎮',
+      dumbbell: '🏋️',
+      book: '📚',
+      code: '💻',
+      coffee: '☕',
+      sparkles: '✨'
+    };
+
+    // Estado global de la aplicación
+    let state = {
+      categories: [],
+      subcategories: [],
+      tasks: [],
+      sessions: [],
+      activeTimer: null, // { taskId, status: 'running'|'paused', firstStartTime, lastResumeTime, accumulatedMs, pauseCount, note }
+      selectedTaskId: null,
+      activeTab: 'hierarchy',
+      expandedCats: {},
+      expandedSubs: {}
+    };
+
+    let wakeLockSentinel = null;
+
+    // --------------------------------------------------
+    // 1. INICIALIZACIÓN Y DATOS DE EJEMPLO (SEED)
+    // --------------------------------------------------
+    function createDefaultSeedData() {
+      const now = Date.now();
+      const hour = 3600 * 1000;
+      const todayStart = new Date();
+      todayStart.setHours(9, 0, 0, 0);
+      const tBase = todayStart.getTime();
+
+      return {
+        categories: [
+          { id: 'cat-work', name: 'Trabajo', color: 'indigo', icon: 'briefcase' },
+          { id: 'cat-home', name: 'Casa', color: 'emerald', icon: 'home' },
+          { id: 'cat-leisure', name: 'Ocio y Salud', color: 'amber', icon: 'dumbbell' }
+        ],
+        subcategories: [
+          { id: 'sub-dev', categoryId: 'cat-work', name: 'Desarrollo & Código' },
+          { id: 'sub-meet', categoryId: 'cat-work', name: 'Gestión y Reuniones' },
+          { id: 'sub-chores', categoryId: 'cat-home', name: 'Tareas Domésticas' },
+          { id: 'sub-sport', categoryId: 'cat-leisure', name: 'Deporte' },
+          { id: 'sub-read', categoryId: 'cat-leisure', name: 'Lectura' }
+        ],
+        tasks: [
+          { id: 'task-1', categoryId: 'cat-work', subcategoryId: 'sub-dev', name: 'Programación App Móvil' },
+          { id: 'task-2', categoryId: 'cat-work', subcategoryId: 'sub-dev', name: 'Revisión de Bugs y Testing' },
+          { id: 'task-3', categoryId: 'cat-work', subcategoryId: 'sub-meet', name: 'Planificación Semanal' },
+          { id: 'task-4', categoryId: 'cat-home', subcategoryId: 'sub-chores', name: 'Cocina y Organización' },
+          { id: 'task-5', categoryId: 'cat-leisure', subcategoryId: 'sub-sport', name: 'Entrenamiento Funcional' },
+          { id: 'task-6', categoryId: 'cat-leisure', subcategoryId: 'sub-read', name: 'Lectura Nocturna' }
+        ],
+        sessions: [
+          {
+            id: 'sess-seed-1',
+            taskId: 'task-1',
+            subcategoryId: 'sub-dev',
+            categoryId: 'cat-work',
+            taskName: 'Programación App Móvil',
+            subcategoryName: 'Desarrollo & Código',
+            categoryName: 'Trabajo',
+            startTime: tBase,
+            endTime: tBase + 40 * 60 * 1000,
+            durationMs: 40 * 60 * 1000,
+            pauseCount: 0,
+            dateStr: getLocalDateStr(new Date(tBase)),
+            note: 'Diseño de interfaz táctil'
+          },
+          {
+            id: 'sess-seed-2',
+            taskId: 'task-1',
+            subcategoryId: 'sub-dev',
+            categoryId: 'cat-work',
+            taskName: 'Programación App Móvil',
+            subcategoryName: 'Desarrollo & Código',
+            categoryName: 'Trabajo',
+            startTime: tBase + 60 * 60 * 1000,
+            endTime: tBase + 85 * 60 * 1000,
+            durationMs: 25 * 60 * 1000,
+            pauseCount: 1,
+            dateStr: getLocalDateStr(new Date(tBase)),
+            note: 'Pruebas de localStorage'
+          }
+        ],
+        activeTimer: null,
+        selectedTaskId: 'task-1',
+        expandedCats: { 'cat-work': true, 'cat-home': true, 'cat-leisure': true },
+        expandedSubs: { 'sub-dev': true, 'sub-meet': true, 'sub-chores': true, 'sub-sport': true, 'sub-read': true }
+      };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          const seed = createDefaultSeedData();
+          state = { ...state, ...seed };
+          saveState();
+        } else {
+          const parsed = JSON.parse(raw);
+          state = {
+            ...state,
+            ...parsed,
+            expandedCats: parsed.expandedCats || {},
+            expandedSubs: parsed.expandedSubs || {}
+          };
+          if (!state.selectedTaskId && state.tasks.length > 0) {
+            state.selectedTaskId = state.tasks[0].id;
+          }
+        }
+      } catch (e) {
+        console.error('Error leyendo localStorage:', e);
+        const seed = createDefaultSeedData();
+        state = { ...state, ...seed };
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          categories: state.categories,
+          subcategories: state.subcategories,
+          tasks: state.tasks,
+          sessions: state.sessions,
+          activeTimer: state.activeTimer,
+          selectedTaskId: state.selectedTaskId,
+          expandedCats: state.expandedCats,
+          expandedSubs: state.expandedSubs
+        }));
+      } catch (e) {
+        console.error('Error guardando en localStorage:', e);
+      }
+    }
+
+    // --------------------------------------------------
+    // 2. UTILIDADES DE FECHA Y FORMATO DE TIEMPO
+    // --------------------------------------------------
+    function getLocalDateStr(dateObj = new Date()) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getStartOfTodayMs() {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
+
+    function getStartOfWeekMs() {
+      const now = new Date();
+      const day = now.getDay(); // 0 Dom, 1 Lun...
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diffToMonday);
+      monday.setHours(0, 0, 0, 0);
+      return monday.getTime();
+    }
+
+    function formatHMS(ms) {
+      const safe = Math.max(0, Math.floor((ms || 0) / 1000));
+      const h = Math.floor(safe / 3600);
+      const m = Math.floor((safe % 3600) / 60);
+      const s = safe % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function formatHumanShort(ms) {
+      const safe = Math.max(0, Math.floor((ms || 0) / 1000));
+      const h = Math.floor(safe / 3600);
+      const m = Math.floor((safe % 3600) / 60);
+      const s = safe % 60;
+      if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+      if (m > 0) return `${m}m ${String(s).padStart(2, '0')}s`;
+      return `${s}s`;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById('toast-box');
+      const content = document.getElementById('toast-content');
+      content.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400"></span><span>${escapeHtml(msg)}</span>`;
+      box.classList.remove('hidden');
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        box.classList.add('hidden');
+      }, 2600);
+    }
+
+    // --------------------------------------------------
+    // 3. WAKE LOCK API (MANTENER PANTALLA ACTIVA EN MÓVIL)
+    // --------------------------------------------------
+    async function updateWakeLock() {
+      const badge = document.getElementById('wakelock-badge');
+      const shouldKeepAwake = state.activeTimer && state.activeTimer.status === 'running';
+
+      if (shouldKeepAwake && 'wakeLock' in navigator) {
+        try {
+          if (!wakeLockSentinel) {
+            wakeLockSentinel = await navigator.wakeLock.request('screen');
+            wakeLockSentinel.addEventListener('release', () => {
+              wakeLockSentinel = null;
+              badge.classList.add('hidden');
+            });
+          }
+          badge.classList.remove('hidden');
+        } catch (err) {
+          badge.classList.add('hidden');
+        }
+      } else {
+        if (wakeLockSentinel) {
+          try { await wakeLockSentinel.release(); } catch (e) {}
+          wakeLockSentinel = null;
+        }
+        badge.classList.add('hidden');
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        updateWakeLock();
+        tickUpdateLiveUI();
+      }
+    });
+
+    // --------------------------------------------------
+    // 4. LÓGICA DEL TEMPORIZADOR (TIMESTAMPS REALES)
+    // --------------------------------------------------
+    function getActiveTimerElapsedMs(now = Date.now()) {
+      const t = state.activeTimer;
+      if (!t || !t.taskId) return 0;
+      if (t.status === 'running') {
+        return (t.accumulatedMs || 0) + Math.max(0, now - t.lastResumeTime);
+      }
+      return t.accumulatedMs || 0;
+    }
+
+    function startTaskWindow(taskId) {
+      const now = Date.now();
+      // Si hay otra tarea activa distinta, guardamos su ventana primero
+      if (state.activeTimer && state.activeTimer.taskId && state.activeTimer.taskId !== taskId) {
+        finishActiveTimerWindow(true);
+      }
+
+      state.selectedTaskId = taskId;
+      state.activeTimer = {
+        taskId: taskId,
+        status: 'running',
+        firstStartTime: now,
+        lastResumeTime: now,
+        accumulatedMs: 0,
+        pauseCount: 0,
+        note: ''
+      };
+
+      const noteInput = document.getElementById('timer-note-input');
+      if (noteInput) noteInput.value = '';
+
+      saveState();
+      updateWakeLock();
+      renderAll();
+      showToast('Nueva ventana de tiempo iniciada');
+    }
+
+    function pauseActiveTimer() {
+      if (!state.activeTimer || state.activeTimer.status !== 'running') return;
+      const now = Date.now();
+      state.activeTimer.accumulatedMs = (state.activeTimer.accumulatedMs || 0) + Math.max(0, now - state.activeTimer.lastResumeTime);
+      state.activeTimer.status = 'paused';
+      state.activeTimer.lastResumeTime = null;
+      state.activeTimer.pauseCount = (state.activeTimer.pauseCount || 0) + 1;
+
+      saveState();
+      updateWakeLock();
+      renderAll();
+      showToast('Ventana en pausa');
+    }
+
+    function resumeActiveTimer() {
+      if (!state.activeTimer || state.activeTimer.status !== 'paused') return;
+      state.activeTimer.status = 'running';
+      state.activeTimer.lastResumeTime = Date.now();
+
+      saveState();
+      updateWakeLock();
+      renderAll();
+      showToast('Ventana reanudada');
+    }
+
+    function toggleActiveTimerFromMiniPlayer() {
+      if (!state.activeTimer) return;
+      if (state.activeTimer.status === 'running') {
+        pauseActiveTimer();
+      } else {
+        resumeActiveTimer();
+      }
+    }
+
+    function finishActiveTimerWindow(silent = false) {
+      if (!state.activeTimer || !state.activeTimer.taskId) return;
+      const now = Date.now();
+      const durationMs = getActiveTimerElapsedMs(now);
+      const task = state.tasks.find(t => t.id === state.activeTimer.taskId);
+
+      if (task && durationMs >= 1000) {
+        const sub = state.subcategories.find(s => s.id === task.subcategoryId);
+        const cat = state.categories.find(c => c.id === task.categoryId);
+
+        const newSession = {
+          id: 'sess-' + now + '-' + Math.random().toString(36).substring(2, 6),
+          taskId: task.id,
+          subcategoryId: sub ? sub.id : '',
+          categoryId: cat ? cat.id : '',
+          taskName: task.name,
+          subcategoryName: sub ? sub.name : 'General',
+          categoryName: cat ? cat.name : 'General',
+          startTime: state.activeTimer.firstStartTime,
+          endTime: now,
+          durationMs: durationMs,
+          pauseCount: state.activeTimer.pauseCount || 0,
+          dateStr: getLocalDateStr(new Date(state.activeTimer.firstStartTime)),
+          note: (state.activeTimer.note || '').trim()
+        };
+
+        state.sessions.unshift(newSession);
+        if (!silent) {
+          showToast(`Ventana guardada (${formatHumanShort(durationMs)}). Tarea lista para otro inicio.`);
+        }
+      } else if (!silent) {
+        showToast('Ventana menor a 1 segundo descartada');
+      }
+
+      state.activeTimer = null;
+      const noteInput = document.getElementById('timer-note-input');
+      if (noteInput) noteInput.value = '';
+
+      saveState();
+      updateWakeLock();
+      renderAll();
+    }
+
+    function discardActiveTimerWindow() {
+      state.activeTimer = null;
+      const noteInput = document.getElementById('timer-note-input');
+      if (noteInput) noteInput.value = '';
+      saveState();
+      updateWakeLock();
+      renderAll();
+      showToast('Ventana actual descartada sin guardar');
+    }
+
+    function handleTimerNoteChange(val) {
+      if (state.activeTimer) {
+        state.activeTimer.note = val;
+        saveState();
+      }
+    }
+
+    // --------------------------------------------------
+    // 5. CÁLCULO DE MÉTRICAS ACUMULADAS (HOY Y SEMANA)
+    // --------------------------------------------------
+    function computeMetricsMap(now = Date.now()) {
+      const startToday = getStartOfTodayMs();
+      const startWeek = getStartOfWeekMs();
+      const map = {};
+
+      state.tasks.forEach(t => {
+        map[t.id] = {
+          currentWindowMs: 0,
+          todayMs: 0,
+          weekMs: 0,
+          todayCount: 0,
+          weekCount: 0
+        };
+      });
+
+      state.sessions.forEach(s => {
+        if (!map[s.taskId]) {
+          map[s.taskId] = { currentWindowMs: 0, todayMs: 0, weekMs: 0, todayCount: 0, weekCount: 0 };
+        }
+        const dur = s.durationMs || 0;
+        if (s.startTime >= startToday) {
+          map[s.taskId].todayMs += dur;
+          map[s.taskId].todayCount += 1;
+        }
+        if (s.startTime >= startWeek) {
+          map[s.taskId].weekMs += dur;
+          map[s.taskId].weekCount += 1;
+        }
+      });
+
+      if (state.activeTimer && state.activeTimer.taskId) {
+        const liveMs = getActiveTimerElapsedMs(now);
+        const tid = state.activeTimer.taskId;
+        if (!map[tid]) {
+          map[tid] = { currentWindowMs: 0, todayMs: 0, weekMs: 0, todayCount: 0, weekCount: 0 };
+        }
+        map[tid].currentWindowMs = liveMs;
+        map[tid].todayMs += liveMs;
+        map[tid].weekMs += liveMs;
+      }
+
+      return map;
+    }
+
+    // --------------------------------------------------
+    // 6. NAVEGACIÓN ENTRE PESTAÑAS
+    // --------------------------------------------------
+    function switchTab(tabName) {
+      state.activeTab = tabName;
+      const views = ['hierarchy', 'timer', 'history', 'stats'];
+      views.forEach(v => {
+        const el = document.getElementById('view-' + v);
+        const btn = document.getElementById('nav-btn-' + v);
+        if (v === tabName) {
+          el.classList.remove('hidden');
+          btn.classList.remove('text-slate-400', 'font-medium');
+          btn.classList.add('text-indigo-400', 'font-semibold');
+        } else {
+          el.classList.add('hidden');
+          btn.classList.remove('text-indigo-400', 'font-semibold');
+          btn.classList.add('text-slate-400', 'font-medium');
+        }
+      });
+
+      document.getElementById('main-scroll').scrollTop = 0;
+      renderAll();
+    }
+
+    function openTaskInTimer(taskId) {
+      state.selectedTaskId = taskId;
+      saveState();
+      switchTab('timer');
+    }
+
+    function openActiveTimerTask() {
+      if (state.activeTimer && state.activeTimer.taskId) {
+        openTaskInTimer(state.activeTimer.taskId);
+      }
+    }
+
+    // --------------------------------------------------
+    // 7. RENDERIZADO DE LA INTERFAZ
+    // --------------------------------------------------
+    function renderAll() {
+      const now = Date.now();
+      const metricsMap = computeMetricsMap(now);
+
+      renderHeaderAndMiniPlayer(metricsMap, now);
+      if (state.activeTab === 'hierarchy') renderHierarchyView(metricsMap);
+      if (state.activeTab === 'timer') renderTimerView(metricsMap, now);
+      if (state.activeTab === 'history') renderHistoryView();
+      if (state.activeTab === 'stats') renderStatsView(metricsMap, now);
+    }
+
+    function renderHeaderAndMiniPlayer(metricsMap, now) {
+      let globalToday = 0;
+      let globalWeek = 0;
+      Object.values(metricsMap).forEach(m => {
+        globalToday += m.todayMs;
+        globalWeek += m.weekMs;
+      });
+
+      document.getElementById('header-today-total').textContent = formatHumanShort(globalToday);
+      document.getElementById('header-week-total').textContent = formatHumanShort(globalWeek);
+
+      // Mini-player flotante si hay un temporizador activo y NO estamos en la vista de reloj de esa misma tarea
+      const miniPlayer = document.getElementById('floating-mini-player');
+      const isShowingActiveTaskInTimer = state.activeTab === 'timer' && state.activeTimer && state.selectedTaskId === state.activeTimer.taskId;
+
+      if (state.activeTimer && state.activeTimer.taskId && !isShowingActiveTaskInTimer) {
+        const task = state.tasks.find(t => t.id === state.activeTimer.taskId);
+        const elapsed = getActiveTimerElapsedMs(now);
+        const isRunning = state.activeTimer.status === 'running';
+
+        miniPlayer.classList.remove('hidden');
+        document.getElementById('mini-player-title').textContent = task ? task.name : 'Tarea activa';
+        document.getElementById('mini-player-status').textContent = isRunning ? 'Grabando ventana actual...' : 'Ventana en pausa';
+        document.getElementById('mini-player-time').textContent = formatHMS(elapsed);
+
+        const dot = document.getElementById('mini-player-dot');
+        dot.className = isRunning
+          ? 'w-3 h-3 rounded-full bg-emerald-400 animate-ping shrink-0'
+          : 'w-3 h-3 rounded-full bg-amber-400 shrink-0';
+
+        const toggleBtn = document.getElementById('mini-player-toggle-btn');
+        if (isRunning) {
+          toggleBtn.className = 'p-2 rounded-xl bg-amber-500 text-slate-950 font-bold active:scale-95 transition';
+          toggleBtn.innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>`;
+        } else {
+          toggleBtn.className = 'p-2 rounded-xl bg-emerald-500 text-slate-950 font-bold active:scale-95 transition';
+          toggleBtn.innerHTML = `<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+        }
+      } else {
+        miniPlayer.classList.add('hidden');
+      }
+    }
+
+    // Renderizar Vista 1: Árbol Jerárquico de 3 niveles
+    function renderHierarchyView(metricsMap) {
+      const container = document.getElementById('hierarchy-container');
+      if (state.categories.length === 0) {
+        container.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center">
+            <p class="text-sm font-semibold text-slate-300">No hay categorías creadas</p>
+            <p class="text-xs text-slate-500 mt-1">Pulsa "+ Categoría" arriba para crear tu jerarquía.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+      state.categories.forEach(cat => {
+        const cMeta = COLORS[cat.color] || COLORS.indigo;
+        const iconEmoji = ICONS[cat.icon] || '📁';
+        const isCatOpen = state.expandedCats[cat.id] !== false;
+        const subs = state.subcategories.filter(s => s.categoryId === cat.id);
+
+        // Sumar tiempo de hoy de toda la categoría
+        const catTasks = state.tasks.filter(t => t.categoryId === cat.id);
+        const catTodayMs = catTasks.reduce((acc, t) => acc + (metricsMap[t.id]?.todayMs || 0), 0);
+
+        html += `
+          <div class="bg-slate-900 border ${cMeta.border} rounded-2xl overflow-hidden shadow-sm">
+            <!-- Cabecera Categoría -->
+            <div class="px-3.5 py-3 ${cMeta.soft} flex items-center justify-between gap-2">
+              <div onclick="toggleCategoryExpand('${cat.id}')" class="flex items-center gap-2.5 flex-1 min-w-0 cursor-pointer">
+                <span class="text-lg">${iconEmoji}</span>
+                <div class="min-w-0">
+                  <div class="font-bold text-sm text-white truncate">${escapeHtml(cat.name)}</div>
+                  <div class="text-[11px] text-slate-400">Hoy: <strong class="font-mono text-slate-200">${formatHumanShort(catTodayMs)}</strong></div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1 shrink-0">
+                <button onclick="openHierarchyModal('create', 'subcategory', '${cat.id}')" class="px-2 py-1 rounded-lg bg-slate-900/80 text-xs font-semibold text-indigo-300 border border-slate-700/80 active:scale-95">
+                  + Sub
+                </button>
+                <button onclick="openHierarchyModal('edit', 'category', '${cat.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-white">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                </button>
+                <button onclick="openDeleteModal('category', '${cat.id}')" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </div>
+        `;
+
+        if (isCatOpen) {
+          html += `<div class="p-2.5 space-y-2.5 divide-y divide-slate-800/60">`;
+          if (subs.length === 0) {
+            html += `
+              <div class="py-2 px-2 flex items-center justify-between text-xs text-slate-500">
+                <span>Sin sub-categorías aún</span>
+                <button onclick="openHierarchyModal('create', 'subcategory', '${cat.id}')" class="text-indigo-400 font-semibold">+ Crear sub-categoría</button>
+              </div>
+            `;
+          } else {
+            subs.forEach(sub => {
+              const isSubOpen = state.expandedSubs[sub.id] !== false;
+              const subTasks = state.tasks.filter(t => t.subcategoryId === sub.id);
+
+              html += `
+                <div class="pt-2 first:pt-0">
+                  <!-- Cabecera Subcategoría -->
+                  <div class="flex items-center justify-between px-2 py-1">
+                    <div onclick="toggleSubcategoryExpand('${sub.id}')" class="flex items-center gap-1.5 flex-1 min-w-0 cursor-pointer">
+                      <span class="text-xs text-slate-400">${isSubOpen ? '▾' : '▸'}</span>
+                      <span class="text-xs font-bold uppercase tracking-wider text-slate-300 truncate">${escapeHtml(sub.name)}</span>
+                      <span class="text-[11px] text-slate-500">(${subTasks.length})</span>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button onclick="openHierarchyModal('create', 'task', '${cat.id}', '${sub.id}')" class="px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-300 text-[11px] font-semibold">
+                        + Tarea
+                      </button>
+                      <button onclick="openHierarchyModal('edit', 'subcategory', '${sub.id}')" class="p-1 text-slate-500 hover:text-slate-200">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                      </button>
+                      <button onclick="openDeleteModal('subcategory', '${sub.id}')" class="p-1 text-slate-500 hover:text-rose-400">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                      </button>
+                    </div>
+                  </div>
+              `;
+
+              if (isSubOpen) {
+                html += `<div class="mt-1.5 space-y-1.5 pl-3 border-l-2 border-slate-800">`;
+                if (subTasks.length === 0) {
+                  html += `
+                    <button onclick="openHierarchyModal('create', 'task', '${cat.id}', '${sub.id}')" class="w-full text-left py-2 px-3 rounded-xl bg-slate-950/50 text-xs text-slate-500 hover:text-indigo-400">
+                      + Añadir primera tarea en ${escapeHtml(sub.name)}...
+                    </button>
+                  `;
+                } else {
+                  subTasks.forEach(task => {
+                    const m = metricsMap[task.id] || { currentWindowMs: 0, todayMs: 0, weekMs: 0 };
+                    const isTimingThis = state.activeTimer && state.activeTimer.taskId === task.id;
+
+                    html += `
+                      <div onclick="openTaskInTimer('${task.id}')" class="flex items-center justify-between p-3 rounded-xl bg-slate-950/90 hover:bg-slate-800/80 border ${isTimingThis ? 'border-emerald-500/50' : 'border-slate-800/80'} active:scale-[0.99] transition cursor-pointer">
+                        <div class="min-w-0 flex-1 pr-2">
+                          <div class="flex items-center gap-2">
+                            ${isTimingThis ? `<span class="w-2.5 h-2.5 rounded-full ${state.activeTimer.status === 'running' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400'} shrink-0"></span>` : ''}
+                            <span class="text-sm font-semibold text-slate-100 truncate">${escapeHtml(task.name)}</span>
+                          </div>
+                          <div class="flex items-center gap-3 mt-1 text-[11px] text-slate-400">
+                            <span>Hoy: <strong class="font-mono text-emerald-400">${formatHumanShort(m.todayMs)}</strong></span>
+                            <span>·</span>
+                            <span>Sem: <strong class="font-mono text-amber-400">${formatHumanShort(m.weekMs)}</strong></span>
+                          </div>
+                        </div>
+
+                        <div class="flex items-center gap-1 shrink-0" onclick="event.stopPropagation()">
+                          <button onclick="openTaskInTimer('${task.id}')" class="px-3 py-1.5 rounded-xl ${isTimingThis ? 'bg-emerald-500 text-slate-950' : 'bg-indigo-600 text-white'} text-xs font-bold shadow">
+                            ${isTimingThis ? formatHMS(m.currentWindowMs) : 'Abrir'}
+                          </button>
+                          <button onclick="openHierarchyModal('edit', 'task', '${task.id}')" class="p-1.5 text-slate-500 hover:text-white">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                          </button>
+                          <button onclick="openDeleteModal('task', '${task.id}')" class="p-1.5 text-slate-500 hover:text-rose-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  });
+                }
+                html += `</div>`;
+              }
+              html += `</div>`;
+            });
+          }
+          html += `</div>`;
+        }
+        html += `</div>`;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function toggleCategoryExpand(catId) {
+      state.expandedCats[catId] = state.expandedCats[catId] === false ? true : false;
+      saveState();
+      renderAll();
+    }
+
+    function toggleSubcategoryExpand(subId) {
+      state.expandedSubs[subId] = state.expandedSubs[subId] === false ? true : false;
+      saveState();
+      renderAll();
+    }
+
+    // Renderizar Vista 2: Pantalla de Temporización de Tarea
+    function renderTimerView(metricsMap, now) {
+      let task = state.tasks.find(t => t.id === state.selectedTaskId);
+      if (!task && state.tasks.length > 0) {
+        task = state.tasks[0];
+        state.selectedTaskId = task.id;
+      }
+
+      if (!task) {
+        document.getElementById('timer-task-title').textContent = 'Crea una tarea primero';
+        return;
+      }
+
+      const sub = state.subcategories.find(s => s.id === task.subcategoryId);
+      const cat = state.categories.find(c => c.id === task.categoryId);
+      const cMeta = COLORS[cat?.color] || COLORS.indigo;
+      const m = metricsMap[task.id] || { currentWindowMs: 0, todayMs: 0, weekMs: 0, todayCount: 0, weekCount: 0 };
+      const isThisActive = state.activeTimer && state.activeTimer.taskId === task.id;
+
+      document.getElementById('timer-breadcrumbs').innerHTML = `
+        <span class="px-2.5 py-0.5 rounded-full ${cMeta.bg} text-white">${escapeHtml(cat ? cat.name : 'Categoría')}</span>
+        <span class="text-slate-600">›</span>
+        <span class="text-slate-300">${escapeHtml(sub ? sub.name : 'Subcategoría')}</span>
+      `;
+
+      document.getElementById('timer-task-title').textContent = task.name;
+
+      // Actualizar controles táctiles según estado
+      const controlsEl = document.getElementById('timer-controls-container');
+      const noteInput = document.getElementById('timer-note-input');
+
+      if (!isThisActive) {
+        noteInput.value = '';
+        noteInput.disabled = true;
+        controlsEl.innerHTML = `
+          <button onclick="startTaskWindow('${task.id}')" class="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-extrabold text-base shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2.5 transition">
+            <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>INICIAR NUEVA VENTANA</span>
+          </button>
+        `;
+      } else {
+        noteInput.disabled = false;
+        if (document.activeElement !== noteInput) {
+          noteInput.value = state.activeTimer.note || '';
+        }
+
+        const isRunning = state.activeTimer.status === 'running';
+        controlsEl.innerHTML = `
+          <div class="grid grid-cols-2 gap-3">
+            ${isRunning ? `
+              <button onclick="pauseActiveTimer()" class="py-4 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 font-extrabold text-base shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition">
+                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+                <span>PAUSAR</span>
+              </button>
+            ` : `
+              <button onclick="resumeActiveTimer()" class="py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:scale-[0.98] text-slate-950 font-extrabold text-base shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition">
+                <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>REANUDAR</span>
+              </button>
+            `}
+
+            <button onclick="finishActiveTimerWindow(false)" class="py-4 rounded-2xl bg-rose-600 hover:bg-rose-500 active:scale-[0.98] text-white font-extrabold text-base shadow-lg shadow-rose-600/25 flex items-center justify-center gap-2 transition">
+              <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+              <span>TERMINAR</span>
+            </button>
+          </div>
+          <button onclick="discardActiveTimerWindow()" class="w-full py-2 text-xs font-semibold text-slate-400 hover:text-rose-400 transition">
+            Cancelar y descartar ventana actual sin guardar
+          </button>
+        `;
+      }
+
+      // Actualizar números y anillo en vivo
+      updateTimerLiveNumbers(task, m, isThisActive);
+
+      // Renderizar lista de sesiones de esta tarea
+      const taskSessions = state.sessions.filter(s => s.taskId === task.id);
+      document.getElementById('task-sessions-badge').textContent = `${taskSessions.length} registros`;
+
+      const listEl = document.getElementById('task-sessions-list');
+      if (taskSessions.length === 0) {
+        listEl.innerHTML = `<div class="p-6 text-center text-xs text-slate-500">Aún no hay ventanas cerradas en esta tarea.</div>`;
+      } else {
+        const startToday = getStartOfTodayMs();
+        listEl.innerHTML = taskSessions.map((s, idx) => {
+          const isToday = s.startTime >= startToday;
+          const startStr = new Date(s.startTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          const endStr = new Date(s.endTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="px-4 py-3 flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-slate-200">Ventana #${taskSessions.length - idx}</span>
+                  ${isToday ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">HOY</span>` : ''}
+                  <span class="text-[11px] text-slate-400">${s.dateStr} · ${startStr} - ${endStr}</span>
+                </div>
+                ${s.note ? `<p class="text-xs text-slate-400 truncate mt-0.5">"${escapeHtml(s.note)}"</p>` : ''}
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="font-mono font-bold text-xs px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-white">
+                  ${formatHMS(s.durationMs)}
+                </span>
+                <button onclick="openDeleteModal('session', '${s.id}')" class="p-1 text-slate-500 hover:text-rose-400">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function updateTimerLiveNumbers(task, m, isThisActive) {
+      const ring = document.getElementById('timer-active-ring');
+      const badge = document.getElementById('timer-status-badge');
+      const subInfo = document.getElementById('timer-sub-info');
+
+      document.getElementById('timer-main-display').textContent = formatHMS(m.currentWindowMs);
+      document.getElementById('metric-current-window').textContent = formatHMS(m.currentWindowMs);
+      document.getElementById('metric-today-total').textContent = formatHMS(m.todayMs);
+      document.getElementById('metric-today-count').textContent = `${m.todayCount} ${m.todayCount === 1 ? 'ventana cerrada' : 'ventanas cerradas'}${isThisActive ? ' + actual' : ''}`;
+      document.getElementById('metric-week-total').textContent = formatHMS(m.weekMs);
+      document.getElementById('metric-week-count').textContent = `${m.weekCount} en la semana`;
+
+      if (isThisActive) {
+        const startClock = new Date(state.activeTimer.firstStartTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        subInfo.textContent = `Inicio ${startClock} · Pausas: ${state.activeTimer.pauseCount || 0}`;
+        if (state.activeTimer.status === 'running') {
+          ring.classList.remove('hidden');
+          badge.className = 'text-[11px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 mb-2';
+          badge.textContent = 'EN CURSO';
+        } else {
+          ring.classList.add('hidden');
+          badge.className = 'text-[11px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 mb-2';
+          badge.textContent = 'EN PAUSA';
+        }
+      } else {
+        ring.classList.add('hidden');
+        badge.className = 'text-[11px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-400 mb-2';
+        badge.textContent = 'LISTA PARA INICIAR';
+        subInfo.textContent = 'En espera de nueva ventana';
+      }
+    }
+
+    // Actualización ligera cada 250ms para que el reloj nunca parpadee ni cierre inputs
+    function tickUpdateLiveUI() {
+      const now = Date.now();
+      const metricsMap = computeMetricsMap(now);
+      renderHeaderAndMiniPlayer(metricsMap, now);
+
+      if (state.activeTab === 'timer' && state.selectedTaskId) {
+        const task = state.tasks.find(t => t.id === state.selectedTaskId);
+        if (task) {
+          const m = metricsMap[task.id] || { currentWindowMs: 0, todayMs: 0, weekMs: 0, todayCount: 0, weekCount: 0 };
+          const isThisActive = state.activeTimer && state.activeTimer.taskId === task.id;
+          updateTimerLiveNumbers(task, m, isThisActive);
+        }
+      }
+    }
+
+    // Renderizar Vista 3: Histórico Global
+    function renderHistoryView() {
+      const catSelect = document.getElementById('history-filter-cat');
+      const currentCatVal = catSelect.value || 'ALL';
+      catSelect.innerHTML = `<option value="ALL">Todas las categorías</option>` +
+        state.categories.map(c => `<option value="${c.id}" ${c.id === currentCatVal ? 'selected' : ''}>${escapeHtml(c.name)}</option>`).join('');
+
+      const dateFilter = document.getElementById('history-filter-date').value;
+
+      const filtered = state.sessions.filter(s => {
+        if (currentCatVal !== 'ALL' && s.categoryId !== currentCatVal) return false;
+        if (dateFilter && s.dateStr !== dateFilter) return false;
+        return true;
+      });
+
+      const totalFilteredMs = filtered.reduce((acc, s) => acc + (s.durationMs || 0), 0);
+      document.getElementById('history-summary-label').innerHTML =
+        `Mostrando <strong>${filtered.length}</strong> sesiones · Total: <strong class="font-mono text-white">${formatHMS(totalFilteredMs)}</strong>`;
+
+      const listContainer = document.getElementById('history-list-container');
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-500">
+            No hay sesiones que coincidan con el filtro seleccionado.
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = filtered.map(s => {
+        const cat = state.categories.find(c => c.id === s.categoryId);
+        const cMeta = COLORS[cat?.color] || COLORS.indigo;
+        const startStr = new Date(s.startTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        const endStr = new Date(s.endTime).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+
+        return `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md ${cMeta.soft} ${cMeta.text}">
+                  ${escapeHtml(s.categoryName)} › ${escapeHtml(s.subcategoryName)}
+                </span>
+                <span class="text-[11px] text-slate-400">${s.dateStr}</span>
+              </div>
+              <div class="text-sm font-bold text-white truncate">${escapeHtml(s.taskName)}</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">
+                Horario: ${startStr} - ${endStr} ${s.note ? `· "${escapeHtml(s.note)}"` : ''}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="font-mono font-bold text-xs px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white">
+                ${formatHMS(s.durationMs)}
+              </span>
+              <button onclick="openDeleteModal('session', '${s.id}')" class="p-1.5 text-slate-500 hover:text-rose-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function clearHistoryFilters() {
+      document.getElementById('history-filter-cat').value = 'ALL';
+      document.getElementById('history-filter-date').value = '';
+      renderHistoryView();
+    }
+
+    // Renderizar Vista 4: Estadísticas y Gráficas
+    function renderStatsView(metricsMap, now) {
+      let todayGlobal = 0;
+      let weekGlobal = 0;
+      Object.values(metricsMap).forEach(m => {
+        todayGlobal += m.todayMs;
+        weekGlobal += m.weekMs;
+      });
+
+      document.getElementById('stats-today-big').textContent = formatHMS(todayGlobal);
+      document.getElementById('stats-week-big').textContent = formatHMS(weekGlobal);
+
+      // 1. Barras por día de la semana (Lun a Dom)
+      const startWeek = getStartOfWeekMs();
+      const dayLabels = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+      const dayTotals = [0, 0, 0, 0, 0, 0, 0];
+
+      state.sessions.forEach(s => {
+        if (s.startTime >= startWeek) {
+          const dayIdx = Math.floor((s.startTime - startWeek) / (24 * 3600 * 1000));
+          if (dayIdx >= 0 && dayIdx < 7) {
+            dayTotals[dayIdx] += (s.durationMs || 0);
+          }
+        }
+      });
+
+      if (state.activeTimer && state.activeTimer.firstStartTime >= startWeek) {
+        const dayIdx = Math.floor((state.activeTimer.firstStartTime - startWeek) / (24 * 3600 * 1000));
+        if (dayIdx >= 0 && dayIdx < 7) {
+          dayTotals[dayIdx] += getActiveTimerElapsedMs(now);
+        }
+      }
+
+      const maxDayMs = Math.max(...dayTotals, 60 * 1000);
+      const barsContainer = document.getElementById('stats-weekday-bars');
+      const labelsContainer = document.getElementById('stats-weekday-labels');
+
+      barsContainer.innerHTML = dayTotals.map((ms, idx) => {
+        const heightPct = Math.max(6, Math.round((ms / maxDayMs) * 100));
+        const mins = Math.round(ms / 60000);
+        return `
+          <div class="flex flex-col items-center justify-end h-full">
+            <span class="text-[10px] font-mono text-slate-400 mb-1">${mins > 0 ? mins + 'm' : ''}</span>
+            <div class="w-full max-w-[28px] rounded-t-lg bg-gradient-to-t from-indigo-600 to-violet-400 transition-all" style="height: ${heightPct}%"></div>
+          </div>
+        `;
+      }).join('');
+
+      labelsContainer.innerHTML = dayLabels.map(l => `<span class="text-[11px] font-semibold text-slate-400">${l}</span>`).join('');
+
+      // 2. Desglose por Categoría en la semana
+      const catBreakdownEl = document.getElementById('stats-category-breakdown');
+      const catStats = state.categories.map(cat => {
+        const catTasks = state.tasks.filter(t => t.categoryId === cat.id);
+        const totalMs = catTasks.reduce((acc, t) => acc + (metricsMap[t.id]?.weekMs || 0), 0);
+        return { cat, totalMs };
+      }).sort((a, b) => b.totalMs - a.totalMs);
+
+      catBreakdownEl.innerHTML = catStats.map(({ cat, totalMs }) => {
+        const pct = weekGlobal > 0 ? Math.round((totalMs / weekGlobal) * 100) : 0;
+        const cMeta = COLORS[cat.color] || COLORS.indigo;
+        return `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-slate-200">${ICONS[cat.icon] || '📁'} ${escapeHtml(cat.name)}</span>
+              <span class="font-mono text-slate-300">${formatHMS(totalMs)} (${pct}%)</span>
+            </div>
+            <div class="w-full h-2.5 rounded-full bg-slate-950 overflow-hidden">
+              <div class="h-full ${cMeta.bg} rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 3. Top Tareas de la Semana
+      const topTasksEl = document.getElementById('stats-top-tasks');
+      const rankedTasks = state.tasks
+        .map(t => ({ task: t, weekMs: metricsMap[t.id]?.weekMs || 0 }))
+        .filter(x => x.weekMs > 0)
+        .sort((a, b) => b.weekMs - a.weekMs)
+        .slice(0, 5);
+
+      if (rankedTasks.length === 0) {
+        topTasksEl.innerHTML = `<div class="text-xs text-slate-500 py-3 text-center">Sin actividad registrada esta semana</div>`;
+      } else {
+        topTasksEl.innerHTML = rankedTasks.map((item, idx) => `
+          <div onclick="openTaskInTimer('${item.task.id}')" class="flex items-center justify-between p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 cursor-pointer">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-5 h-5 rounded-full bg-slate-800 text-[11px] font-bold flex items-center justify-center text-indigo-400">#${idx + 1}</span>
+              <span class="text-xs font-semibold text-white truncate">${escapeHtml(item.task.name)}</span>
+            </div>
+            <span class="font-mono font-bold text-xs text-emerald-400 shrink-0">${formatHMS(item.weekMs)}</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    // --------------------------------------------------
+    // 8. MODALES CRUD DE JERARQUÍA, SESIÓN MANUAL Y BACKUP
+    // --------------------------------------------------
+    function closeModal() {
+      document.getElementById('app-modal-backdrop').classList.add('hidden');
+    }
+
+    function openHierarchyModal(mode, level, idOrParentCatId, parentSubId) {
+      const backdrop = document.getElementById('app-modal-backdrop');
+      const body = document.getElementById('app-modal-body');
+
+      let currentName = '';
+      let currentColor = 'indigo';
+      let currentIcon = 'briefcase';
+
+      if (mode === 'edit') {
+        if (level === 'category') {
+          const cat = state.categories.find(c => c.id === idOrParentCatId);
+          if (cat) { currentName = cat.name; currentColor = cat.color; currentIcon = cat.icon; }
+        } else if (level === 'subcategory') {
+          const sub = state.subcategories.find(s => s.id === idOrParentCatId);
+          if (sub) currentName = sub.name;
+        } else if (level === 'task') {
+          const t = state.tasks.find(x => x.id === idOrParentCatId);
+          if (t) currentName = t.name;
+        }
+      }
+
+      const titleMap = {
+        category: mode === 'create' ? 'Nueva Categoría' : 'Editar Categoría',
+        subcategory: mode === 'create' ? 'Nueva Sub-categoría' : 'Editar Sub-categoría',
+        task: mode === 'create' ? 'Nueva Tarea' : 'Editar Tarea'
+      };
+
+      let extraFields = '';
+      if (level === 'category') {
+        extraFields = `
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5">Color</label>
+            <div class="grid grid-cols-6 gap-2" id="modal-color-picker">
+              ${Object.entries(COLORS).map(([key, val]) => `
+                <button type="button" onclick="selectModalColor('${key}')" data-color="${key}" class="modal-color-btn h-9 rounded-xl ${val.bg} ${currentColor === key ? 'ring-2 ring-white scale-105' : 'opacity-70'} transition"></button>
+              `).join('')}
+            </div>
+            <input type="hidden" id="modal-cat-color" value="${currentColor}" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5">Icono</label>
+            <div class="grid grid-cols-4 gap-2" id="modal-icon-picker">
+              ${Object.entries(ICONS).map(([key, emoji]) => `
+                <button type="button" onclick="selectModalIcon('${key}')" data-icon="${key}" class="modal-icon-btn py-2 rounded-xl border ${currentIcon === key ? 'border-indigo-500 bg-indigo-500/20' : 'border-slate-800 bg-slate-950'} text-lg">${emoji}</button>
+              `).join('')}
+            </div>
+            <input type="hidden" id="modal-cat-icon" value="${currentIcon}" />
+          </div>
+        `;
+      }
+
+      body.innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="text-base font-bold text-white">${titleMap[level]}</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white text-sm font-bold px-2">✕</button>
+        </div>
+        <form onsubmit="submitHierarchyModal(event, '${mode}', '${level}', '${idOrParentCatId || ''}', '${parentSubId || ''}')" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Nombre</label>
+            <input id="modal-item-name" type="text" required value="${escapeHtml(currentName)}" placeholder="Escribe el nombre..." class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-sm text-white focus:outline-none focus:border-indigo-500" />
+          </div>
+          ${extraFields}
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancelar</button>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold">Guardar</button>
+          </div>
+        </form>
+      `;
+
+      backdrop.classList.remove('hidden');
+      setTimeout(() => document.getElementById('modal-item-name')?.focus(), 50);
+    }
+
+    function selectModalColor(colorKey) {
+      document.getElementById('modal-cat-color').value = colorKey;
+      document.querySelectorAll('.modal-color-btn').forEach(btn => {
+        if (btn.getAttribute('data-color') === colorKey) {
+          btn.classList.add('ring-2', 'ring-white', 'scale-105');
+          btn.classList.remove('opacity-70');
+        } else {
+          btn.classList.remove('ring-2', 'ring-white', 'scale-105');
+          btn.classList.add('opacity-70');
+        }
+      });
+    }
+
+    function selectModalIcon(iconKey) {
+      document.getElementById('modal-cat-icon').value = iconKey;
+      document.querySelectorAll('.modal-icon-btn').forEach(btn => {
+        if (btn.getAttribute('data-icon') === iconKey) {
+          btn.className = 'modal-icon-btn py-2 rounded-xl border border-indigo-500 bg-indigo-500/20 text-lg';
+        } else {
+          btn.className = 'modal-icon-btn py-2 rounded-xl border border-slate-800 bg-slate-950 text-lg';
+        }
+      });
+    }
+
+    function submitHierarchyModal(e, mode, level, idOrParentCatId, parentSubId) {
+      e.preventDefault();
+      const name = (document.getElementById('modal-item-name').value || '').trim();
+      if (!name) return;
+
+      const now = Date.now();
+      if (level === 'category') {
+        const color = document.getElementById('modal-cat-color').value || 'indigo';
+        const icon = document.getElementById('modal-cat-icon').value || 'briefcase';
+        if (mode === 'create') {
+          const newId = 'cat-' + now;
+          state.categories.push({ id: newId, name, color, icon });
+          state.expandedCats[newId] = true;
+        } else {
+          const cat = state.categories.find(c => c.id === idOrParentCatId);
+          if (cat) { cat.name = name; cat.color = color; cat.icon = icon; }
+        }
+      } else if (level === 'subcategory') {
+        if (mode === 'create') {
+          const newId = 'sub-' + now;
+          state.subcategories.push({ id: newId, categoryId: idOrParentCatId, name });
+          state.expandedSubs[newId] = true;
+        } else {
+          const sub = state.subcategories.find(s => s.id === idOrParentCatId);
+          if (sub) sub.name = name;
+        }
+      } else if (level === 'task') {
+        if (mode === 'create') {
+          const newId = 'task-' + now;
+          state.tasks.push({ id: newId, categoryId: idOrParentCatId, subcategoryId: parentSubId, name });
+          state.selectedTaskId = newId;
+        } else {
+          const t = state.tasks.find(x => x.id === idOrParentCatId);
+          if (t) t.name = name;
+        }
+      }
+
+      saveState();
+      closeModal();
+      renderAll();
+      showToast('Cambios guardados');
+    }
+
+    // Modal de confirmación de borrado (sin usar confirm nativo)
+    function openDeleteModal(level, id) {
+      const backdrop = document.getElementById('app-modal-backdrop');
+      const body = document.getElementById('app-modal-body');
+
+      let label = 'este elemento';
+      if (level === 'category') label = state.categories.find(c => c.id === id)?.name || 'la categoría y su contenido';
+      if (level === 'subcategory') label = state.subcategories.find(s => s.id === id)?.name || 'la subcategoría y sus tareas';
+      if (level === 'task') label = state.tasks.find(t => t.id === id)?.name || 'la tarea';
+      if (level === 'session') label = 'esta ventana de tiempo del histórico';
+
+      body.innerHTML = `
+        <div class="space-y-3">
+          <h3 class="text-base font-bold text-white">Confirmar eliminación</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            ¿Seguro que deseas eliminar <strong>${escapeHtml(label)}</strong>?
+          </p>
+          <div class="flex justify-end gap-2 pt-2">
+            <button onclick="closeModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancelar</button>
+            <button onclick="confirmDeleteItem('${level}', '${id}')" class="px-5 py-2.5 rounded-xl bg-rose-600 text-white text-xs font-bold">Eliminar</button>
+          </div>
+        </div>
+      `;
+      backdrop.classList.remove('hidden');
+    }
+
+    function confirmDeleteItem(level, id) {
+      if (level === 'category') {
+        const taskIds = state.tasks.filter(t => t.categoryId === id).map(t => t.id);
+        if (state.activeTimer && taskIds.includes(state.activeTimer.taskId)) state.activeTimer = null;
+        state.tasks = state.tasks.filter(t => t.categoryId !== id);
+        state.subcategories = state.subcategories.filter(s => s.categoryId !== id);
+        state.categories = state.categories.filter(c => c.id !== id);
+      } else if (level === 'subcategory') {
+        const taskIds = state.tasks.filter(t => t.subcategoryId === id).map(t => t.id);
+        if (state.activeTimer && taskIds.includes(state.activeTimer.taskId)) state.activeTimer = null;
+        state.tasks = state.tasks.filter(t => t.subcategoryId !== id);
+        state.subcategories = state.subcategories.filter(s => s.id !== id);
+      } else if (level === 'task') {
+        if (state.activeTimer && state.activeTimer.taskId === id) state.activeTimer = null;
+        state.tasks = state.tasks.filter(t => t.id !== id);
+        if (state.selectedTaskId === id) state.selectedTaskId = state.tasks[0]?.id || null;
+      } else if (level === 'session') {
+        state.sessions = state.sessions.filter(s => s.id !== id);
+      }
+
+      saveState();
+      closeModal();
+      renderAll();
+      showToast('Elemento eliminado');
+    }
+
+    // Modal para registrar una ventana manual
+    function openManualSessionModalForCurrentTask() {
+      openManualSessionModal(state.selectedTaskId);
+    }
+
+    function openManualSessionModal(preselectedTaskId) {
+      if (state.tasks.length === 0) {
+        showToast('Primero crea una tarea en la pestaña Tareas');
+        return;
+      }
+      const targetTaskId = preselectedTaskId || state.selectedTaskId || state.tasks[0].id;
+      const todayStr = getLocalDateStr(new Date());
+
+      const backdrop = document.getElementById('app-modal-backdrop');
+      const body = document.getElementById('app-modal-body');
+
+      body.innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="text-base font-bold text-white">Añadir Ventana Manual</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white text-sm font-bold px-2">✕</button>
+        </div>
+        <form onsubmit="submitManualSession(event)" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Tarea</label>
+            <select id="man-task-id" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white">
+              ${state.tasks.map(t => `<option value="${t.id}" ${t.id === targetTaskId ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Fecha</label>
+              <input id="man-date" type="date" required value="${todayStr}" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Hora inicio</label>
+              <input id="man-time" type="time" required value="09:00" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Duración (en minutos)</label>
+            <input id="man-duration" type="number" min="1" max="1440" required value="30" class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Nota (opcional)</label>
+            <input id="man-note" type="text" placeholder="Ej: Sesión sin el móvil a mano..." class="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white" />
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-semibold">Cancelar</button>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold">Guardar Ventana</button>
+          </div>
+        </form>
+      `;
+      backdrop.classList.remove('hidden');
+    }
+
+    function submitManualSession(e) {
+      e.preventDefault();
+      const taskId = document.getElementById('man-task-id').value;
+      const dateStr = document.getElementById('man-date').value;
+      const timeStr = document.getElementById('man-time').value || '09:00';
+      const mins = Number(document.getElementById('man-duration').value || 0);
+      const note = (document.getElementById('man-note').value || '').trim();
+
+      const task = state.tasks.find(t => t.id === taskId);
+      if (!task || mins <= 0) return;
+
+      const sub = state.subcategories.find(s => s.id === task.subcategoryId);
+      const cat = state.categories.find(c => c.id === task.categoryId);
+
+      const startDate = new Date(`${dateStr}T${timeStr}:00`);
+      const startMs = isNaN(startDate.getTime()) ? Date.now() : startDate.getTime();
+      const durationMs = Math.round(mins * 60 * 1000);
+
+      state.sessions.unshift({
+        id: 'sess-man-' + Date.now(),
+        taskId: task.id,
+        subcategoryId: sub ? sub.id : '',
+        categoryId: cat ? cat.id : '',
+        taskName: task.name,
+        subcategoryName: sub ? sub.name : 'General',
+        categoryName: cat ? cat.name : 'General',
+        startTime: startMs,
+        endTime: startMs + durationMs,
+        durationMs,
+        pauseCount: 0,
+        dateStr: getLocalDateStr(new Date(startMs)),
+        note: note || 'Registro manual'
+      });
+
+      state.sessions.sort((a, b) => b.startTime - a.startTime);
+      saveState();
+      closeModal();
+      renderAll();
+      showToast('Sesión manual añadida');
+    }
+
+    // Modal de Copia de Seguridad (Exportar / Importar JSON y CSV)
+    function openBackupModal() {
+      const backdrop = document.getElementById('app-modal-backdrop');
+      const body = document.getElementById('app-modal-body');
+
+      body.innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="text-base font-bold text-white">Datos y Copia de Seguridad</h3>
+          <button onclick="closeModal()" class="text-slate-400 hover:text-white text-sm font-bold px-2">✕</button>
+        </div>
+        <div class="space-y-3 text-xs text-slate-300">
+          <p class="text-slate-400">
+            Todos tus datos se guardan automáticamente en el almacenamiento interno de tu navegador (<strong>localStorage</strong>).
+          </p>
+
+          <button onclick="exportBackupJSON()" class="w-full py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center justify-between">
+            <span>Exportar Copia Completa (.JSON)</span>
+            <span>⬇️</span>
+          </button>
+
+          <button onclick="exportSessionsCSV()" class="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-between">
+            <span>Exportar Histórico para Excel (.CSV)</span>
+            <span>📊</span>
+          </button>
+
+          <div class="pt-2 border-t border-slate-800">
+            <label class="block font-bold text-slate-300 mb-1.5">Restaurar Copia (.JSON)</label>
+            <input type="file" accept=".json" onchange="importBackupJSON(event)" class="w-full text-xs text-slate-400 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:bg-slate-800 file:text-white file:font-semibold" />
+          </div>
+        </div>
+      `;
+      backdrop.classList.remove('hidden');
+    }
+
+    function exportBackupJSON() {
+      const payload = {
+        app: 'TimeFlow Pro Standalone',
+        exportedAt: new Date().toISOString(),
+        categories: state.categories,
+        subcategories: state.subcategories,
+        tasks: state.tasks,
+        sessions: state.sessions
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timeflow-backup-${getLocalDateStr(new Date())}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Copia JSON descargada');
+    }
+
+    function exportSessionsCSV() {
+      const headers = ['ID', 'Fecha', 'Inicio', 'Fin', 'Categoria', 'Subcategoria', 'Tarea', 'Segundos', 'Duracion_HMS', 'Nota'];
+      const rows = state.sessions.map(s => [
+        s.id,
+        s.dateStr,
+        new Date(s.startTime).toLocaleTimeString('es-ES'),
+        new Date(s.endTime).toLocaleTimeString('es-ES'),
+        `"${(s.categoryName || '').replace(/"/g, '""')}"`,
+        `"${(s.subcategoryName || '').replace(/"/g, '""')}"`,
+        `"${(s.taskName || '').replace(/"/g, '""')}"`,
+        Math.round((s.durationMs || 0) / 1000),
+        formatHMS(s.durationMs || 0),
+        `"${(s.note || '').replace(/"/g, '""')}"`
+      ]);
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `timeflow-historico-${getLocalDateStr(new Date())}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Archivo CSV descargado');
+    }
+
+    function importBackupJSON(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (Array.isArray(data.categories) && Array.isArray(data.tasks) && Array.isArray(data.sessions)) {
+            state.categories = data.categories;
+            state.subcategories = data.subcategories || [];
+            state.tasks = data.tasks;
+            state.sessions = data.sessions;
+            state.selectedTaskId = state.tasks[0]?.id || null;
+            saveState();
+            closeModal();
+            renderAll();
+            showToast('Copia de seguridad restaurada con éxito');
+          } else {
+            showToast('Formato de archivo JSON no válido');
+          }
+        } catch (err) {
+          showToast('Error al leer el archivo JSON');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // --------------------------------------------------
+    // 9. ARRANQUE DE LA APLICACIÓN
+    // --------------------------------------------------
+    window.onload = function () {
+      loadState();
+      renderAll();
+      updateWakeLock();
+      setInterval(tickUpdateLiveUI, 250);
+    };
+  </script>
+</body>
+</html>
