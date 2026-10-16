@@ -61,12 +61,16 @@
       animation: pulse-ring 2.5s infinite ease-in-out;
     }
   </style>
-  <link rel="manifest" href='data:application/manifest+json,{"name":"TimeFlow Pro","short_name":"TimeFlow","start_url":".","display":"standalone","background_color":"#090d16","theme_color":"#6366f1","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/2972/2972531.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]}' />
+  <link rel="manifest" href="/bus-gijon/timer/manifest.json">
+  <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2972/2972531.png">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2972/2972531.png">
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js'));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/bus-gijon/timer/sw.js', { scope: '/bus-gijon/timer/' });
+      });
     }
-  </script>  
+  </script>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans flex flex-col h-full overflow-hidden">
 
